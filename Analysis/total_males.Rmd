@@ -1,0 +1,172 @@
+---
+title: "Total males"
+author: "Jordan BENREZKALLAH"
+date: "7/4/2021"
+output: html_document
+---
+
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+SciViews::R
+library("readxl")
+library(dplyr)
+library(plotly)
+
+# Import
+data <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "Total males (R)")
+
+# Rename column
+data %>%
+  rename(
+    sp = "Plant",
+    t0 = "0",
+    t1 = "15",
+    t2 = "30",
+    t3 = "60",
+    t4 = "120") -> data
+
+# Labelise
+data <- labelise(data, label = list(
+  sp = "Plant specie",
+  t0 = "0 minutes",
+  t1 =  "15 minutes",
+  t2 = "30 minutes",
+  t3 = "60 minutes",
+  t4 = "120 minutes"))
+
+# Select column
+data <- dplyr::select(data,
+  sp, t0, t1, t2, t3, t4)
+
+# Replace NA by 0
+data[is.na(data)] <- 0
+```
+
+```{r}
+# Total by species
+data %>% 
+  group_by(sp) %>% 
+  summarise(T0 = sum(t0), T1 = sum(t1), T2 = sum(t1 + t2), T3 = (sum(t3) + T2), T4 = (sum(t4)+ T3),replicat = table(sp)) -> total
+# possible with aggregate:
+# aggregate(data$t1, by=list(Category=data$sp), FUN=sum)
+
+# Feeding success
+# round
+total$success <- signif((total$T4/total$replicat)*100, digits = 3)
+
+# Labelise
+total <- labelise(total, label = list(
+  sp = "Plant specie",
+  T0 = "0 minutes",
+  T1 =  "15 minutes",
+  T2 = "30 minutes",
+  T3 = "60 minutes",
+  T4 = "120 minutes",
+  success = "Feeding success (%)"))
+
+t0 <- c(0,0,0)
+t1 <- c(15,15,15)
+t2 <- c(30,30,30)
+t3 <- c(60,60,60)
+t4 <- c(120,120,120)
+total["0"] <- t0
+total["15"] <- t1
+total["30"] <- t2
+total["60"] <- t3
+total["120"] <- t4
+
+total
+```
+
+
+
+```{r}
+bid <- total[1, 1:7]
+eur <- total[2, 1:7]
+ost <- total[3, 1:7]
+
+bid
+```
+
+```{r}
+### Bidens
+# Gather of Bidens, order the dataframe
+g_bid <- gather(bid, "replicat", "sp", "T0", "T1", "T2", "T3", "T4")
+g_bid[1, 1] <- "0"
+g_bid[2, 1] <- "15"
+g_bid[3, 1] <- "30"
+g_bid[4, 1] <- "60"
+g_bid[5, 1] <- "120"
+
+g_bid %>%
+  rename(time = "replicat", replicat = "sp") -> g_bid
+
+# add sp
+g_bid$sp <- c("Bidens","Bidens","Bidens","Bidens","Bidens")
+
+
+
+# If no factor, the time in the plot is not in a good order
+g_bid$time <- factor(g_bid$time, levels = g_bid$time[order(g_bid$replicat)])
+
+
+### Euryops
+# Gather of Euryops, order the dataframe
+g_eur <- gather(eur, "replicat", "sp", "T0", "T1", "T2", "T3", "T4")
+g_eur[1, 1] <- "0"
+g_eur[2, 1] <- "15"
+g_eur[3, 1] <- "30"
+g_eur[4, 1] <- "60"
+g_eur[5, 1] <- "120"
+
+g_eur %>%
+  rename(time = "replicat", replicat = "sp") -> g_eur
+
+# add sp
+g_eur$sp <- c("Euryops","Euryops","Euryops","Euryops","Euryops")
+
+
+### Osteospermum
+# Gather of Osteospermum, order the dataframe
+g_ost <- gather(ost, "replicat", "sp", "T0", "T1", "T2", "T3", "T4")
+g_ost[1, 1] <- "0"
+g_ost[2, 1] <- "15"
+g_ost[3, 1] <- "30"
+g_ost[4, 1] <- "60"
+g_ost[5, 1] <- "120"
+
+g_ost %>%
+  rename(time = "replicat", replicat = "sp") -> g_ost
+
+# add sp
+g_ost$sp <- c("Osteospermum","Osteospermum","Osteospermum","Osteospermum","Osteospermum")
+
+# If no factor, the time in the plot is not in a good order
+g_ost$time <- factor(g_ost$time, levels = g_ost$time[order(g_ost$replicat)])
+
+
+## Merge all plants
+merge_g <- rbind(g_bid, g_eur, g_ost)
+
+
+
+
+```
+
+
+
+```{r}
+# Plot
+ggplot(as_data_frame(merge_g), aes(x = time, y = replicat, color = sp, group = sp) )  + geom_line(aes( color = sp)) + geom_point()
+```
+
+
+
+```{r}
+
+```
+

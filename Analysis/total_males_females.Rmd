@@ -1,0 +1,176 @@
+---
+title: "Feeding protocol"
+author: "Jordan BENREZKALLAH"
+date: "7/4/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+    always_allow_html: true
+---
+
+
+```{r Import, message=FALSE, warning=FALSE, include=FALSE, results='hide', paged.print=FALSE}
+options(tinytex.verbose = TRUE)
+library("readxl")
+library(dplyr)
+library(plotly)
+library(ggpubr)
+library(knitr)
+library(ggplot2)
+library(kableExtra)
+library(scales)
+library(devEMF)
+
+
+# Import
+male <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "Total males (R)2")
+female <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "Total females (R)")
+
+sum_pct <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "Summary_pct")
+sum_rpl <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "Summary_repl")
+
+data <- read_excel("../Data/feeding_sum.xlsx",sheet = "data")
+
+# Rename
+rename(sum_pct, " " = "...1") -> sum_pct
+rename(sum_rpl, " " = "...1") -> sum_rpl
+
+# Round
+male$per_success <- signif(male$per_success, digits = 2)
+female$per_success <- signif(female$per_success, digits = 2)
+
+sum_pct$Bidens <- signif(sum_pct$Bidens, digits = 2)
+sum_pct$Euryops <- signif(sum_pct$Euryops, digits = 2)
+sum_pct$Osteospermum <- signif(sum_pct$Osteospermum, digits = 2)
+
+data$mean<- signif(data$mean, digits = 2)
+data$sd <- signif(data$sd, digits = 2)
+
+```
+
+
+```{r Creation plot, echo=FALSE}
+# Plot female
+f <- ggplot(female, aes(x = time, y = per_success, color = sp, group = sp) )  + geom_line(aes(color = sp)) + geom_point() + labs(x = "", y = "Percentage") + scale_y_continuous(labels = percent) + ggtitle("Female") + labs(col = "Petal") + scale_x_continuous(breaks = c(0, 15, 30, 60, 120))
+
+# Plot male
+m <- ggplot(male, aes(x = time, y = per_success, color = sp, group = sp) )  + geom_line(aes(color = sp)) + geom_point() + labs(x = "Time [minute]", y = "Percentage") + scale_y_continuous(labels = percent) + ggtitle("Male") + labs(col = "Petal")  + scale_x_continuous(breaks = c(0, 15, 30, 60, 120))
+
+```
+
+
+```{r Creation table, echo=FALSE}
+table_pct <- ggtexttable(sum_pct, theme = ttheme("classic"),rows = NULL) 
+table_rpl <- ggpubr::ggtexttable(sum_rpl, theme = ttheme("classic"),rows = NULL)
+
+# Possible with Kable, LaTeX font, but not possible to merge with ggplot2...
+#textk <- kable(sum_pct, format = "html", table.attr = "style = \"color: black;\"" )
+```
+# All days
+```{r Show graph, echo=FALSE}
+# Record the next plot in a pdf file
+pdf("figure_R/feeding_success_total.pdf", height = 6, width = 6)
+
+ggarrange(f, m,
+  ncol = 1, nrow = 2, common.legend = TRUE, legend = "top")
+
+# End of record
+dev.off()
+```
+
+
+\makebox[\linewidth]{\textbf{Feeding success}}
+```{r Show table percentage, echo=FALSE}
+# Record the next plot in a pdf file
+pdf("table_pct.pdf", height = 6, width = 6)
+
+# table_pct
+table_pct <- kable(sum_pct) %>%
+  kable_styling(position = "center", font_size = 11)
+table_pct
+
+# End of record
+dev.off()
+```
+
+\newpage
+
+\makebox[\linewidth]{\textbf{Replica number}}
+```{r Show table replicate, echo=FALSE}
+
+
+# table_rpl
+table_rpl <- kable(sum_rpl, dev = "pdf") %>%
+  kable_styling( position = "center", font_size = 11) %>%
+  save_kable(file = "table_rpl.pdf")
+
+
+
+
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+# Plotly, interactive, but too heavy
+# Maybe add at the end, if I have the time
+f2 <- plot_ly(data = female, x = ~time, y =~per_success, color = ~sp, mode = 'lines+markers')
+f2
+```
+
+
+# 3 days
+
+Comparaison between male and female. Each group represent a day, male  (20, 21, 22 March) and female (22, 23, 24 March).
+Because of *Osmia cornuta* physiology, we assume it more favorable to begin earlier the experience with males.
+Indeed, *in natura* males osmia emerge before females.
+
+```{r echo=FALSE}
+
+bar_chart <- ggplot(data, aes(x = sp, y = mean, fill = sex)) + 
+  geom_bar(stat="identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean - error, ymax = mean + error), width = .2, position = position_dodge(.9)) + 
+  geom_text(aes(y = 0, label = mean), vjust = -0.3, position = position_dodge(0.9), size = 5, color = "black") + # mean in bottom
+  #geom_text(aes(label = signif(mean + sd, digits = 3), y = mean + sd), vjust = data$mean - data$sd - 1, position = position_dodge(0.9)) + # error bar + sd
+  #geom_text(aes(label = signif(mean - sd, digits = 2), y = mean - sd), vjust = data$mean + data$sd + 0.3, position = position_dodge(0.9)) + # error bar - sd
+ # scale_fill_manual(values = c('orchid2','deepskyblue3')) + 
+  scale_y_continuous(labels = percent) + 
+  scale_x_discrete(labels = expression(italic("Bidens"), italic("Euryops"), italic("Osteospermum"))) +
+  labs(x = "Petal", y = "Mean", fill = "Sex") + 
+  scale_fill_manual(values = c("orchid2", "deepskyblue3"), 
+                       name = "Sex",
+                       breaks = c("female", "male"),
+                       labels = c("Female", "Male"))
+
+
+bar_chart + theme_minimal() + theme() -> bar_chart
+
+bar_chart
+```
+
+
+```{r}
+# Record the next plot in a pdf file
+pdf("figure_R/histogram.pdf", height = 6, width = 6)
+
+bar_chart
+# End of record
+dev.off()
+```
+
+
+|        | Bidens| Euryops | Osteospermum |
+|:------:|:--------:|:--------:|:----:|
+| Female | 0.94 ± sd 0.10  | 0.86 ± sd 0.15  | 0.83 ± sd 0.21  |
+|        |n = 3 groups           |n = 3 groups           |   n = 3 groups |
+||||
+| Male | 0.88 ± sd 0.13  | 0.91 ± sd 0.09  | 0.73 ± sd 0.32  |
+|        |n = 3 groups           |n = 3 groups           |   n = 3 groups |
+
+
+
+
+
+

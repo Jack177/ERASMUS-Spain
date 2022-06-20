@@ -1,0 +1,77 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+SciViews::R
+library("readxl")
+library(dplyr)
+
+# Import
+data <- read_excel("../Data/Protocol_feeding_experiment.xlsx",sheet = "1st Results (R)")
+
+# Rename column
+data %>%
+  rename(
+    sp = "Plant",
+    t0 = "0",
+    t1 = "15",
+    t2 = "30",
+    t3 = "60",
+    t4 = "120") -> data
+
+# Labelise
+data <- labelise(data, label = list(
+  sp = "Plant specie",
+  t0 = "0 minutes",
+  t1 =  "15 minutes",
+  t2 = "30 minutes",
+  t3 = "60 minutes",
+  t4 = "120 minutes"))
+
+# Select column
+data <- dplyr::select(data,
+  sp, t0, t1, t2, t3, t4)
+
+# Replace NA by 0
+data[is.na(data)] <- 0
+```
+
+```{r}
+# Total by species
+data %>% 
+  group_by(sp) %>% 
+  summarise(T0 = sum(t0), T1 = sum(t1), T2 = sum(t1 + t2), T3 = (sum(t3) + T2), T4 = (sum(t4)+ T3)) -> total
+# possible with aggregate:
+# aggregate(data$t1, by=list(Category=data$sp), FUN=sum)
+
+# Feeding success
+total$success <- (total$T4/8)*100
+
+# Labelise
+total <- labelise(total, label = list(
+  sp = "Plant specie",
+  T0 = "0 minutes",
+  T1 =  "15 minutes",
+  T2 = "30 minutes",
+  T3 = "60 minutes",
+  T4 = "120 minutes",
+  success = "Feeding success (%)"))
+
+total
+```
+```{r Anova}
+
+# I have no idea how to do.. 
+idk <- data.frame(var = total$success,
+                 group = factor(total$sp))
+
+# ANOVA
+tot_anal <- aov(var ~ group, idk)
+summary(tot_anal)
+```
+```{r}
+
+```
+
